@@ -1,0 +1,3 @@
+/home/salamnki/7ankalis/village/build/CMakeFiles/game.dir
+/home/salamnki/7ankalis/village/build/CMakeFiles/edit_cache.dir
+/home/salamnki/7ankalis/village/build/CMakeFiles/rebuild_cache.dir
