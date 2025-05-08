@@ -34,7 +34,7 @@ int main() {
         }
 
         board.update();
-        usleep(100000);
+        usleep(1000);
     }
     cout << "\033[?25h";
     return 0;

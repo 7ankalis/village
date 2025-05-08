@@ -31,7 +31,7 @@ int ElixirCollector::collect() {
     if (currentAmount >= capacity) {
         int collected = currentAmount;
         currentAmount = 0;
-        icon = "💧";
+        icon = "‼️ ";
         return collected;
     }
     return 0;
