@@ -1,4 +1,6 @@
 #include "Board.h"
+#include "Raider.h"
+#include "Bomberman.h"
 #include <iostream>
 #include <algorithm>
 #include <random>

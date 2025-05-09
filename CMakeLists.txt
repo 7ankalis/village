@@ -10,6 +10,12 @@ include_directories(include)
 # Get all source files from src/
 file(GLOB SOURCES src/*.cpp)
 
+# Explicitly list the new source files to ensure they're included
+set(SOURCES ${SOURCES}
+    src/Raider.cpp
+    src/Bomberman.cpp
+)
+
 # Create the executable
 add_executable(game ${SOURCES})
 
