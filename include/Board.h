@@ -9,6 +9,7 @@ using namespace std;
 #include "Enemy.h"
 #include <vector>
 #include <string>
+#include <memory>
 
 class Board {
 private:
@@ -21,11 +22,15 @@ private:
     vector<Wall> walls;
     vector<GoldMine> goldMines;
     vector<ElixirCollector> elixirCollectors;
-    vector<Enemy> enemies;
+    vector<unique_ptr<Enemy>> enemies;
     vector<string> leftTexts;
     int spawnCounter;
     const int spawnRate;
     bool gameOver;
+    
+    // Track enemy types for UI
+    int raiderCount;
+    int bombermanCount;
 
     void drawBuilding(const Building& building) const;
     bool areBuildingsColliding(const Building& b1, const Building& b2) const;

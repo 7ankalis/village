@@ -14,13 +14,16 @@ using namespace std;
  * - Left text area for displaying game stats
  * - Spawn counter and rate for enemies
  * - Game over flag set to false
+ * - Enemy type counters
  */
 Board::Board() : player(margin + 2, height / 2), 
                  townhall(80, height / 2),
                  leftTexts(height - 2, string(margin - 1, ' ')),
                  spawnCounter(0),
                  spawnRate(30),
-                 gameOver(false) {}
+                 gameOver(false),
+                 raiderCount(0),
+                 bombermanCount(0) {}
 
 /* Draws a building on the console
  * Handles both bordered buildings (walls, mines, collectors) and simple icons
@@ -36,13 +39,13 @@ void Board::drawBuilding(const Building& building) const {
         int sizeY = building.getSizeY();
 
         // Draw top border
-        cout << "\033[" << startY << ";" << startX << "H╔";
-        for (int i = 0; i < sizeX - 2; ++i) cout << "═";
-        cout << "╗";
+        cout << "\033[" << startY << ";" << startX << "H+";
+        for (int i = 0; i < sizeX - 2; ++i) cout << "-";
+        cout << "+";
 
         // Draw middle rows with icon centered
         for (int j = 1; j < sizeY - 1; ++j) {
-            cout << "\033[" << startY + j << ";" << startX << "H║";
+            cout << "\033[" << startY + j << ";" << startX << "H|";
             for (int i = 1; i < sizeX - 1; ++i) {
                 if (i == sizeX/2 && j == sizeY/2) {
                     cout << icon;
@@ -51,13 +54,13 @@ void Board::drawBuilding(const Building& building) const {
                     cout << " ";
                 }
             }
-            cout << "║";
+            cout << "|";
         }
 
         // Draw bottom border
-        cout << "\033[" << startY + sizeY - 1 << ";" << startX << "H╚";
-        for (int i = 0; i < sizeX - 2; ++i) cout << "═";
-        cout << "╝";
+        cout << "\033[" << startY + sizeY - 1 << ";" << startX << "H+";
+        for (int i = 0; i < sizeX - 2; ++i) cout << "-";
+        cout << "+";
     } else {
         // Simple icon without border
         cout << "\033[" << startY << ";" << startX << "H" << icon;
@@ -124,8 +127,9 @@ bool Board::CanBuild(const Building* building, const Building* ignore) const {
     return true;  // No collisions found
 }
 
-/* Spawns enemies at random edges of the map
+/* Spawns enemies at random positions around the map edges
  * Uses a counter and spawn rate to control frequency
+ * Enemies spawn from all four edges with varied patterns
  */
 void Board::spawnEnemy() {
     spawnCounter++;
@@ -135,20 +139,92 @@ void Board::spawnEnemy() {
         // Random number generation setup
         static random_device rd;
         static mt19937 gen(rd());
-        uniform_int_distribution<> dis(0, 1);
+        uniform_int_distribution<> edge_dis(0, 3);  // 0=top, 1=right, 2=bottom, 3=left
+        uniform_int_distribution<> type_dis(0, 9);  // For enemy type (0-9)
+        
+        // Distributions for different edges - defined outside the switch
+        uniform_int_distribution<> x_dis(margin + 1, width - 2);
+        uniform_int_distribution<> y_dis(1, height - 2);
         
         // Determine spawn position (random edge)
         int x, y;
-        uniform_int_distribution<> y_dis(1, height - 2);
-        y = y_dis(gen);
+        int edge = edge_dis(gen);
         
-        if (dis(gen)) {
-            x = margin + 1;  // Left edge
-        } else {
-            x = width - 2;    // Right edge
+        switch (edge) {
+            case 0: // Top edge
+                x = x_dis(gen);
+                y = 1;
+                break;
+                
+            case 1: // Right edge
+                x = width - 2;
+                y = y_dis(gen);
+                break;
+                
+            case 2: // Bottom edge
+                x = x_dis(gen);
+                y = height - 2;
+                break;
+                
+            case 3: // Left edge
+                x = margin + 1;
+                y = y_dis(gen);
+                break;
         }
         
-        enemies.emplace_back(x, y);  // Add new enemy
+        // Determine enemy type: 0-3 for Raiders (40%), 4-9 for Bombermen (60%)
+        int enemyTypeRoll = type_dis(gen);
+        if (enemyTypeRoll < 4) {
+            enemies.push_back(make_unique<Raider>(x, y));
+            raiderCount++;
+        } else {
+            enemies.push_back(make_unique<Bomberman>(x, y));
+            bombermanCount++;
+        }
+        
+        // Occasionally spawn groups of enemies (10% chance)
+        if (type_dis(gen) < 1) {
+            // Spawn a small cluster of 1-2 additional enemies around the same point
+            int extraEnemies = 1 + (rand() % 2); // Simple random 1-2 to avoid distribution scope issues
+            
+            for (int i = 0; i < extraEnemies; i++) {
+                // Generate small random offsets (-3 to +3)
+                int offsetX = rand() % 7 - 3;
+                int offsetY = rand() % 7 - 3;
+                
+                int groupX = x + offsetX;
+                int groupY = y + offsetY;
+                
+                // Keep within bounds
+                if (groupX < margin + 1) groupX = margin + 1;
+                if (groupX > width - 2) groupX = width - 2;
+                if (groupY < 1) groupY = 1;
+                if (groupY > height - 2) groupY = height - 2;
+                
+                // 50/50 chance of same or different enemy type
+                int groupTypeRoll = rand() % 10; // Simple random 0-9
+                
+                if (groupTypeRoll < 5) {
+                    // Same type as original
+                    if (enemyTypeRoll < 4) {
+                        enemies.push_back(make_unique<Raider>(groupX, groupY));
+                        raiderCount++;
+                    } else {
+                        enemies.push_back(make_unique<Bomberman>(groupX, groupY));
+                        bombermanCount++;
+                    }
+                } else {
+                    // Different type as original
+                    if (enemyTypeRoll < 4) {
+                        enemies.push_back(make_unique<Bomberman>(groupX, groupY));
+                        bombermanCount++;
+                    } else {
+                        enemies.push_back(make_unique<Raider>(groupX, groupY));
+                        raiderCount++;
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -157,7 +233,7 @@ void Board::spawnEnemy() {
  */
 void Board::updateEnemies() {
     for (auto& enemy : enemies) {
-        if (enemy.update(townhall.getPosition(), walls, goldMines, elixirCollectors, townhall)) {
+        if (enemy->update(townhall.getPosition(), walls, goldMines, elixirCollectors, townhall)) {
             gameOver = true;  // Townhall was destroyed
             return;           // No need to continue; game is over
         }
@@ -325,8 +401,8 @@ void Board::render() {
 
     // Draw enemies
     for (const auto& enemy : enemies) {
-        cout << "\033[" << enemy.getPosition().y << ";" << enemy.getPosition().x << "H";
-        cout << enemy.getIcon();
+        cout << "\033[" << enemy->getPosition().y << ";" << enemy->getPosition().x << "H";
+        cout << enemy->getIcon();
     }
 
     // Draw player
@@ -345,20 +421,20 @@ void Board::render() {
 
 /* Renders the top border of the game UI with margin separator */
 void Board::renderTopBorder() const {
-    cout << "╔";
+    cout << "+";
     for (int x = 1; x < width - 1; x++) {
-        cout << (x == margin ? "╦" : "═");
+        cout << (x == margin ? "+" : "-");
     }
-    cout << "╗" << endl;
+    cout << "+" << endl;
 }
 
 /* Renders the bottom border of the game UI with margin separator */
 void Board::renderBottomBorder() const {
-    cout << "╚";
+    cout << "+";
     for (int x = 1; x < width - 1; x++) {
-        cout << (x == margin ? "╩" : "═");
+        cout << (x == margin ? "+" : "-");
     }
-    cout << "╝" << endl;
+    cout << "+" << endl;
 }
 
 /* Renders the middle section of the game UI including:
@@ -369,7 +445,7 @@ void Board::renderBottomBorder() const {
  */
 void Board::renderMiddle() const {
     for (int y = 1; y < height - 1; y++) {
-        cout << "║";
+        cout << "|";
 
         // Display various game stats in the left margin
         if (y == 1) {
@@ -393,11 +469,17 @@ void Board::renderMiddle() const {
         } else if (y == 7) {
             string line = "Enemies = " + to_string(enemies.size());
             cout << line << string(margin - 1 - line.length(), ' ');
+        } else if (y == 8) {
+            string line = "Raiders = " + to_string(raiderCount);
+            cout << line << string(margin - 1 - line.length(), ' ');
+        } else if (y == 9) {
+            string line = "Bombermen = " + to_string(bombermanCount);
+            cout << line << string(margin - 1 - line.length(), ' ');
         } else {
             cout << string(margin - 1, ' ');
         }
 
-        cout << "║";
-        cout << string(width - margin - 2, ' ') << "║" << endl;
+        cout << "|";
+        cout << string(width - margin - 2, ' ') << "|" << endl;
     }
 }

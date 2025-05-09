@@ -34,7 +34,12 @@ The goal is to build a thriving village while protecting your Town Hall from ene
 - **Elixir Collector**: Generates elixir over time, which must be collected.
 
 ### Enemies
-Enemies spawn at the edges of the map and move toward your Town Hall. They will attack any buildings in their path.
+Enemies spawn at the edges of the map and move toward your Town Hall. There are two types of enemies:
+
+- **Raiders (🗡️)**: These enemies prioritize attacking resource buildings (Gold Mines and Elixir Collectors) and the Town Hall. They deal moderate damage.
+- **Bombermen (💣)**: These specialized enemies focus on destroying walls first. They deal higher damage to all structures but move more slowly.
+
+Each enemy type requires different defensive strategies to effectively counter their attacks.
 
 ## Game Strategy
 

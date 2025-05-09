@@ -3,6 +3,7 @@
 #include <unistd.h>  
 #include <iostream>
 using namespace std;
+
 int main() {
     cout << "\033[?25l";
     Board board;
@@ -15,6 +16,7 @@ int main() {
         switch(input) {
             case 'U': case 'D': case 'L': case 'R':
                 board.tryMovePlayer(input);
+                board.update();
                 break;
             case 'W':
                 board.placeWall();
@@ -33,7 +35,6 @@ int main() {
                 return 0;
         }
 
-        board.update();
         usleep(1000);
     }
     cout << "\033[?25h";
