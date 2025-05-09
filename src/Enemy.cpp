@@ -148,7 +148,8 @@ bool Enemy::update(const Position& targetPos, vector<Wall>& walls, vector<GoldMi
         
         // If adjacent to a building, attack it
         if (target) {
-            // Check if this is a Raider trying to attack a wall, which shouldn't happen
+            // Raiders don't attack walls - this check should be redundant since findTarget
+            // already excludes walls for Raiders, but keeping it for safety
             if (getType() == EnemyType::RAIDER) {
                 for (auto& wall : walls) {
                     if (target == &wall) {
@@ -292,13 +293,13 @@ Raider::Raider(int x, int y)
 /**
  * @brief Find target for Raider
  * 
- * Raiders only attack resource buildings and townhall, completely ignoring walls
+ * Raiders attack any building except walls: prioritizing resource buildings and townhall
  * 
  * @param walls Vector of walls (ignored by Raiders)
- * @param goldMines Vector of gold mines
- * @param elixirCollectors Vector of elixir collectors
- * @param townhall Town hall reference
- * @return Pointer to the closest building, or nullptr if no building is in range
+ * @param goldMines Vector of gold mines (high priority)
+ * @param elixirCollectors Vector of elixir collectors (high priority)
+ * @param townhall Town hall reference (attacked if closest)
+ * @return Pointer to the closest building to attack, or nullptr if no building is in range
  */
 Building* Raider::findTarget(vector<Wall>& walls, vector<GoldMine>& goldMines,
                           vector<ElixirCollector>& elixirCollectors, const TownHall& townhall) {
@@ -325,7 +326,7 @@ Building* Raider::findTarget(vector<Wall>& walls, vector<GoldMine>& goldMines,
         }
     }
     
-    // Check town hall (last priority but will attack if it's closest)
+    // Check town hall (will attack if it's closest)
     double dist_th = calculateDistance(myPos, townhall.getPosition());
     if (dist_th < minDist) {
         minDist = dist_th;
