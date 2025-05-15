@@ -22,6 +22,7 @@ enum class EnemyType {
  */
 class Enemy : public Npc {
 protected:
+    int health;
     int damage;
     int speedCounter;
     const int speed;
@@ -76,6 +77,27 @@ public:
      * @return The EnemyType (RAIDER or BOMBERMAN)
      */
     EnemyType getType() const;
+    
+    /**
+     * @brief Get the enemy's health
+     * 
+     * @return Current health points
+     */
+    int getHealth() const { return health; }
+    
+    /**
+     * @brief Set the enemy's health
+     * 
+     * @param newHealth New health value
+     */
+    void setHealth(int newHealth) { health = newHealth; }
+    
+    /**
+     * @brief Check if the enemy is alive
+     * 
+     * @return true if health > 0, false otherwise
+     */
+    bool isAlive() const { return health > 0; }
     
     /**
      * @brief Find the closest building to attack

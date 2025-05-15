@@ -30,6 +30,12 @@ int main() {
             case 'C':
                 board.collectResources();
                 break;
+                            case 'A':
+                board.trainArcher();
+                break;
+                            case 'B':
+                board.trainBarbarian();
+                break;
             case 'Q':
                 cout << "\033[?25h";
                 return 0;

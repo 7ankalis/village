@@ -22,6 +22,7 @@
  */
 Enemy::Enemy(int x, int y, EnemyType type, const string& icon, int dmg, int spd)
     : Npc(x, y, icon),
+      health(100),
       damage(dmg),
       speedCounter(0),
       speed(spd),

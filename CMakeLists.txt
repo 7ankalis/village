@@ -14,6 +14,9 @@ file(GLOB SOURCES src/*.cpp)
 set(SOURCES ${SOURCES}
     src/Raider.cpp
     src/Bomberman.cpp
+    src/Troop.cpp
+    src/Archer.cpp
+    src/Barbarian.cpp
 )
 
 # Create the executable

@@ -13,4 +13,4 @@ public:
     const Resources& getResources() const;
 };
 
-#endif
+#endif // PLAYER_H
