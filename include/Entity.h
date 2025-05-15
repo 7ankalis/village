@@ -13,6 +13,7 @@ public:
     const Position& getPosition() const;
     const string& getIcon() const;
     void setPosition(int x, int y);
+    void setPosition(const Position& newPos) { pos = newPos; }
 };
 
 #endif

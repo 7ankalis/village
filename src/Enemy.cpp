@@ -1,6 +1,6 @@
 /**
  * @file Enemy.cpp
- * @brief Implementation of the Enemy class hierarchy, representing different types of opponents
+ * @brief Implementation of the base Enemy class
  */
 
 #include "Enemy.h"
@@ -22,6 +22,7 @@
  */
 Enemy::Enemy(int x, int y, EnemyType type, const string& icon, int dmg, int spd)
     : Npc(x, y, icon),
+      health(100),
       damage(dmg),
       speedCounter(0),
       speed(spd),
@@ -148,7 +149,8 @@ bool Enemy::update(const Position& targetPos, vector<Wall>& walls, vector<GoldMi
         
         // If adjacent to a building, attack it
         if (target) {
-            // Check if this is a Raider trying to attack a wall, which shouldn't happen
+            // Raiders don't attack walls - this check should be redundant since findTarget
+            // already excludes walls for Raiders, but keeping it for safety
             if (getType() == EnemyType::RAIDER) {
                 for (auto& wall : walls) {
                     if (target == &wall) {
@@ -273,146 +275,6 @@ int Enemy::getDamage() const {
  */
 EnemyType Enemy::getType() const {
     return type;
-}
-
-/**
- * @brief Constructor for Raider enemy
- * 
- * Creates a Raider with:
- * - Icon: "🗡️" (sword)
- * - Damage: 15 points per attack
- * - Speed: 12 (faster than Bomberman)
- * 
- * @param x Initial X-coordinate
- * @param y Initial Y-coordinate
- */
-Raider::Raider(int x, int y)
-    : Enemy(x, y, EnemyType::RAIDER, "🗡️", 15, 12) {}
-
-/**
- * @brief Find target for Raider
- * 
- * Raiders only attack resource buildings and townhall, completely ignoring walls
- * 
- * @param walls Vector of walls (ignored by Raiders)
- * @param goldMines Vector of gold mines
- * @param elixirCollectors Vector of elixir collectors
- * @param townhall Town hall reference
- * @return Pointer to the closest building, or nullptr if no building is in range
- */
-Building* Raider::findTarget(vector<Wall>& walls, vector<GoldMine>& goldMines,
-                          vector<ElixirCollector>& elixirCollectors, const TownHall& townhall) {
-    // Raiders only target resources and townhall, never walls
-    Building* closestTarget = nullptr;
-    double minDist = 1000000;  // Large initial value
-    Position myPos = getPosition();
-    
-    // Check gold mines first (high priority)
-    for (auto& mine : goldMines) {
-        double dist = calculateDistance(myPos, mine.getPosition());
-        if (dist < minDist) {
-            minDist = dist;
-            closestTarget = &mine;
-        }
-    }
-    
-    // Check elixir collectors (high priority)
-    for (auto& collector : elixirCollectors) {
-        double dist = calculateDistance(myPos, collector.getPosition());
-        if (dist < minDist) {
-            minDist = dist;
-            closestTarget = &collector;
-        }
-    }
-    
-    // Check town hall (last priority but will attack if it's closest)
-    double dist_th = calculateDistance(myPos, townhall.getPosition());
-    if (dist_th < minDist) {
-        minDist = dist_th;
-        closestTarget = const_cast<TownHall*>(&townhall);
-    }
-    
-    // Raiders completely ignore walls - no wall checking code here
-    
-    return (minDist < 2) ? closestTarget : nullptr;
-}
-
-/**
- * @brief Constructor for Bomberman enemy
- * 
- * Creates a Bomberman with:
- * - Icon: "💣" (bomb)
- * - Damage: 25 points per attack (higher than Raider)
- * - Speed: 20 (slower than Raider)
- * 
- * @param x Initial X-coordinate
- * @param y Initial Y-coordinate
- */
-Bomberman::Bomberman(int x, int y)
-    : Enemy(x, y, EnemyType::BOMBERMAN, "💣", 25, 20) {}
-
-/**
- * @brief Find target for Bomberman
- * 
- * Bombermen prioritize walls over other buildings
- * 
- * @param walls Vector of walls
- * @param goldMines Vector of gold mines
- * @param elixirCollectors Vector of elixir collectors
- * @param townhall Town hall reference
- * @return Pointer to the target building, or nullptr if no building is in range
- */
-Building* Bomberman::findTarget(vector<Wall>& walls, vector<GoldMine>& goldMines,
-                             vector<ElixirCollector>& elixirCollectors, const TownHall& townhall) {
-    // Bombermen prioritize walls over other buildings
-    Building* closestWall = nullptr;
-    double minWallDist = 1000000;  // Large initial value
-    Position myPos = getPosition();
-    
-    // Check walls
-    for (auto& wall : walls) {
-        double dist = calculateDistance(myPos, wall.getPosition());
-        if (dist < minWallDist) {
-            minWallDist = dist;
-            closestWall = &wall;
-        }
-    }
-    
-    // If there's a wall nearby, target it
-    if (closestWall && minWallDist < 2) {
-        return closestWall;
-    }
-    
-    // If no walls or walls are too far, check other buildings
-    Building* closestOther = nullptr;
-    double minOtherDist = 1000000;
-    
-    // Check gold mines
-    for (auto& mine : goldMines) {
-        double dist = calculateDistance(myPos, mine.getPosition());
-        if (dist < minOtherDist) {
-            minOtherDist = dist;
-            closestOther = &mine;
-        }
-    }
-    
-    // Check elixir collectors
-    for (auto& collector : elixirCollectors) {
-        double dist = calculateDistance(myPos, collector.getPosition());
-        if (dist < minOtherDist) {
-            minOtherDist = dist;
-            closestOther = &collector;
-        }
-    }
-    
-    // Check town hall
-    double dist_th = calculateDistance(myPos, townhall.getPosition());
-    if (dist_th < minOtherDist) {
-        minOtherDist = dist_th;
-        closestOther = const_cast<TownHall*>(&townhall);
-    }
-    
-    return (minOtherDist < 2) ? closestOther : nullptr;
 }
 
 

@@ -1,9 +1,15 @@
 #include "Board.h"
+#include "Raider.h"
+#include "Bomberman.h"
 #include <iostream>
 #include <algorithm>
+#include <memory>
+#include <utility>
+#include <memory>
 #include <random>
 #include <unistd.h>
 #include <termios.h>
+#include <climits>  // For INT_MAX
 
 using namespace std;
 
@@ -248,6 +254,72 @@ void Board::updateEnemies() {
         [](const ElixirCollector& e) { return e.getHealth() <= 0; }), elixirCollectors.end());
 }
 
+/* Updates all troops' behavior - attacks enemies and removes dead troops
+ * Troops will attack the first enemy they encounter within range,
+ * and move strategically based on their attack range
+ */
+void Board::updateTroops() {
+    // Check for dead troops and remove them
+    troops.erase(remove_if(troops.begin(), troops.end(), 
+        [](const unique_ptr<Troop>& troop) { return !troop->isAlive(); }), troops.end());
+    
+    // For each troop, find an enemy to attack
+    for (auto& troop : troops) {
+        bool hasAttacked = false;
+        
+        // Try to attack any enemy within range
+        for (auto& enemy : enemies) {
+            // Create a shared_ptr that observes the unique_ptr (doesn't take ownership)
+            shared_ptr<Enemy> sharedEnemy(enemy.get(), [](Enemy*){});
+            
+            if (troop->attack(sharedEnemy)) {
+                hasAttacked = true;
+                break;  // Only attack one enemy per update
+            }
+        }
+        
+        // If troop didn't attack, consider moving toward nearest enemy
+        if (!hasAttacked && !enemies.empty()) {
+            // Find the closest enemy
+            Position closestEnemyPos;
+            int closestDistance = INT_MAX;
+            
+            for (auto& enemy : enemies) {
+                Position troopPos = troop->getPosition();
+                Position enemyPos = enemy->getPosition();
+                
+                int distance = abs(troopPos.x - enemyPos.x) + abs(troopPos.y - enemyPos.y);
+                
+                if (distance < closestDistance) {
+                    closestDistance = distance;
+                    closestEnemyPos = enemyPos;
+                }
+            }
+            
+            // Only move if needed based on troop type and range
+            if (closestDistance < INT_MAX) {
+                // For ranged troops like archers, maintain optimal distance if possible
+                int optimalDistance = troop->getRange();
+                
+                // If the troop is an archer and already at a good range, don't move
+                bool isArcher = dynamic_cast<Archer*>(troop.get()) != nullptr;
+                
+                if (isArcher && closestDistance <= optimalDistance && closestDistance > 1) {
+                    // Archer is at a good range to attack, don't move closer
+                    // We'll let archer update try to attack again next turn
+                } else {
+                    // For non-archers or archers too far away, move toward enemy
+                    troop->moveTowards(closestEnemyPos);
+                }
+            }
+        }
+    }
+    
+    // Remove dead enemies
+    enemies.erase(remove_if(enemies.begin(), enemies.end(), 
+        [](const unique_ptr<Enemy>& enemy) { return enemy->getHealth() <= 0; }), enemies.end());
+}
+
 /* Attempts to move player in specified direction
  * Returns true if move was successful, false if blocked
  */
@@ -333,6 +405,51 @@ bool Board::placeElixirCollector() {
     return false;
 }
 
+/* Train an archer near the player's position
+ * Requires 30 elixir to train
+ * Finds valid position around player to place the archer
+ */
+bool Board::trainArcher() {
+    const int archerCost = 30;
+    
+    // Check if player has enough resources
+    if (player.getResources().elixir < archerCost) {
+        cout << "Not enough elixir to train an Archer! (Need " << archerCost << ")" << endl;
+        return false;
+    }
+    
+    // Get position adjacent to player for the archer
+    Position playerPos = player.getPosition();
+    
+    // Check adjacent positions
+    for (int dx = -1; dx <= 1; dx++) {
+        for (int dy = -1; dy <= 1; dy++) {
+            if (dx == 0 && dy == 0) continue; // Skip player's position
+            
+            Position troopPos(playerPos.x + dx, playerPos.y + dy);
+            
+            // Check if position is valid
+            if (troopPos.x >= margin && troopPos.x < width - 2 && 
+                troopPos.y > 0 && troopPos.y < height - 2) {
+                // Create and add archer at valid position
+                auto archer = make_unique<Archer>(troopPos.x, troopPos.y);
+                troops.push_back(std::move(archer));
+                
+                // Increment archer count
+                archerCount++;
+                
+                // Deduct resources
+                player.getResources().elixir -= archerCost;
+                cout << "Trained an Archer for " << archerCost << " elixir!" << endl;
+                return true;
+            }
+        }
+    }
+    
+    cout << "No valid position to place an Archer!" << endl;
+    return false;
+}
+
 /* Collects resources from buildings player is currently standing on
  * Only collects from one building of each type per call
  */
@@ -372,11 +489,57 @@ void Board::updateResources() {
     for (auto& collector : elixirCollectors) collector.update();
 }
 
+/* Train a barbarian near the player's position
+ * Requires 25 gold to train
+ * Finds valid position around player to place the barbarian
+ */
+bool Board::trainBarbarian() {
+    const int barbarianCost = 25;
+    
+    // Check if player has enough resources
+    if (player.getResources().gold < barbarianCost) {
+        cout << "Not enough gold to train a Barbarian! (Need " << barbarianCost << ")" << endl;
+        return false;
+    }
+    
+    // Get position adjacent to player for the barbarian
+    Position playerPos = player.getPosition();
+    
+    // Check adjacent positions
+    for (int dx = -1; dx <= 1; dx++) {
+        for (int dy = -1; dy <= 1; dy++) {
+            if (dx == 0 && dy == 0) continue; // Skip player's position
+            
+            Position troopPos(playerPos.x + dx, playerPos.y + dy);
+            
+            // Check if position is valid
+            if (troopPos.x >= margin && troopPos.x < width - 2 && 
+                troopPos.y > 0 && troopPos.y < height - 2) {
+                // Create and add barbarian at valid position
+                auto barbarian = make_unique<Barbarian>(troopPos.x, troopPos.y);
+                troops.push_back(std::move(barbarian));
+                
+                // Increment barbarian count
+                barbarianCount++;
+                
+                // Deduct resources
+                player.getResources().gold -= barbarianCost;
+                cout << "Trained a Barbarian for " << barbarianCost << " gold!" << endl;
+                return true;
+            }
+        }
+    }
+    
+    cout << "No valid position to place a Barbarian!" << endl;
+    return false;
+}
+
 /* Main game update function - handles enemy spawning, movement, and resource updates */
 void Board::update() {
     if (gameOver) return;
     spawnEnemy();
     updateEnemies();
+    updateTroops();  // Update troops behavior
     updateResources();
 }
 
@@ -384,6 +547,7 @@ void Board::update() {
  * - Borders and UI
  * - All buildings
  * - Enemies
+ * - Troops
  * - Player
  * - Game over message if applicable
  */
@@ -403,6 +567,12 @@ void Board::render() {
     for (const auto& enemy : enemies) {
         cout << "\033[" << enemy->getPosition().y << ";" << enemy->getPosition().x << "H";
         cout << enemy->getIcon();
+    }
+    
+    // Draw troops
+    for (const auto& troop : troops) {
+        cout << "\033[" << troop->getPosition().y << ";" << troop->getPosition().x << "H";
+        cout << troop->getIcon();
     }
 
     // Draw player
@@ -442,6 +612,7 @@ void Board::renderBottomBorder() const {
  * - Building counts
  * - Townhall health
  * - Enemy count
+ * - Troop counts
  */
 void Board::renderMiddle() const {
     for (int y = 1; y < height - 1; y++) {
@@ -474,6 +645,15 @@ void Board::renderMiddle() const {
             cout << line << string(margin - 1 - line.length(), ' ');
         } else if (y == 9) {
             string line = "Bombermen = " + to_string(bombermanCount);
+            cout << line << string(margin - 1 - line.length(), ' ');
+        } else if (y == 11) {
+            string line = "Troops = " + to_string(troops.size());
+            cout << line << string(margin - 1 - line.length(), ' ');
+        } else if (y == 12) {
+            string line = "Archers = " + to_string(archerCount);
+            cout << line << string(margin - 1 - line.length(), ' ');
+        } else if (y == 13) {
+            string line = "Barbarians = " + to_string(barbarianCount);
             cout << line << string(margin - 1 - line.length(), ' ');
         } else {
             cout << string(margin - 1, ' ');

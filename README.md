@@ -19,9 +19,17 @@ The goal is to build a thriving village while protecting your Town Hall from ene
 - **Build Gold Mine**: Press 'M'
 - **Build Elixir Collector**: Press 'E'
 - **Collect Resources**: Press 'C' when standing on a resource building
+- **Train Archer**: Press 'A'
+- **Train Barbarian**: Press 'B'
 - **Quit Game**: Press 'Q'
 
 ## Game Elements
+
+### Troops
+You can train different types of troops to defend your village:
+
+- **Barbarian (🧔🏾‍♂️)**: Melee attacker with high health. Attacks enemies at close range.
+- **Archer (🏹)**: Ranged attacker that can hit enemies from a distance.
 
 ### Resources
 - **Gold**: Used to build Elixir Collectors and Walls
